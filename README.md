@@ -1,7 +1,3 @@
-# SmithCNN
-A convolutional neural network binary classifier for spike waveform data
-
-
 # Smith Lab CNN Neuronal Spike Classifier User Guide v1.0
 # Data Preparation (Using MATLAB)
 For a code example and further function descriptions, see “example.m”. Example folders and files in “dataprep”.
