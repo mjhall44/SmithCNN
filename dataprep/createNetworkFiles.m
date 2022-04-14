@@ -1,9 +1,14 @@
-function createNetworkFiles(inputDir,outputDir, numSplits)
+function createNetworkFiles(inputDir,outputDir, numSplits, trainandtest)
 
 %settings
 plotcombine =0; % plot the data loaded from each file
 
 %check directories end in a slash
+if inputDir(length(inputDir)) ~= '\'
+   disp('Directory must end in a slash')
+end
+
+
 totaldats = 0; %total number of waves
 %loops through input dir
 dirname=inputDir;
@@ -92,43 +97,64 @@ splitSect = 0; %not save files, but temp sections to reduce memory usage
 
     
     %make file names for saving
-    backs = strfind(fullPath, '.');
-    filename = char(extractBetween(fullPath, backs));
+    dots = strfind(fullPath, '.');
+    backslash = strfind(fullPath, '\');
+    filename = char(extractBetween(fullPath, backslash(length(backslash))+1, dots(length(dots))-1 ));
     
-    underscores= strfind(filename, '.');
-    rootName = char(extractBetween(filename, 1,(underscores-1)));
-    mkdir([outputDir,'training_files'])
-    mkdir([outputDir,'testing_files'])
-    for k =1:numSplits
-        if splitSect >0 % if broken apart to save memory
-            for s=1:splitSect
-                unqSect= ['tempCelledWaves_s' num2str(s)];
-                sectObject = matfile([outputDir unqSect]);
-                celledSect = sectObject.celledWaves(k,1);
-                celledWaves{k,1} = [celledWaves{k,1}; celledSect{1,1}];
-                clear celledSect
+    rootName = filename;
+    if trainandtest == 1
+        mkdir([outputDir,'training_files'])
+        mkdir([outputDir,'testing_files'])
+        for k =1:numSplits
+            if splitSect >0 % if broken apart to save memory
+                for s=1:splitSect
+                    unqSect= ['tempCelledWaves_s' num2str(s)];
+                    sectObject = matfile([outputDir unqSect]);
+                    celledSect = sectObject.celledWaves(k,1);
+                    celledWaves{k,1} = [celledWaves{k,1}; celledSect{1,1}];
+                    clear celledSect
+                end
             end
+            unqName= [rootName '_p' num2str(k)];
+            waveData = celledWaves{k,1};
+            rngVals = randperm(length(waveData),round(length(waveData)*0.2));
+            waveDataTest = waveData(rngVals,:);
+            waveData(rngVals,:) = NaN;
+            waveData = waveData(~isnan(waveData(:,1)),:);
+            if k == 0
+            save([outputDir '\training_files\train_data'],'waveData','-v7.3')
+            waveData = waveDataTest;
+            save([outputDir '\testing_files\test_data'],'waveData','-v7.3')
+            else
+            save([outputDir '\training_files\train_' num2str(k)],'waveData','-v7.3')
+            waveData = waveDataTest;
+            save([outputDir '\testing_files\test_' num2str(k)],'waveData','-v7.3')
+            end
+            clear celledWaves{k,1}; waveData=[]; %memory reduction
         end
-        unqName= [rootName '_p' num2str(k)];
-        waveData = celledWaves{k,1};
-        rngVals = randperm(length(waveData),round(length(waveData)*0.2));
-        waveDataTest = waveData(rngVals,:);
-        waveData(rngVals,:) = NaN;
-        waveData = waveData(~isnan(waveData(:,1)),:);
-        if k == 1
-        save([outputDir '\training_files\train_data'],'waveData','-v7.3')
-        waveData = waveDataTest;
-        save([outputDir '\testing_files\test_data'],'waveData','-v7.3')
-        else
-        save([outputDir '\training_files\train_' num2str(k)],'waveData','-v7.3')
-        waveData = waveDataTest;
-        save([outputDir '\testing_files\test_' num2str(k)],'waveData','-v7.3')
+        clear waveData;
+        fprintf("%d training file(s) saved to %s\n",numSplits,[outputDir '\training_files'])
+        fprintf("%d testing  file(s) saved to %s\n",numSplits,[outputDir '\testing_files'])
+    else
+        mkdir([outputDir,'training_files'])
+        for k =1:numSplits
+            if splitSect >0 % if broken apart to save memory
+                for s=1:splitSect
+                    unqSect= ['tempCelledWaves_s' num2str(s)];
+                    sectObject = matfile([outputDir unqSect]);
+                    celledSect = sectObject.celledWaves(k,1);
+                    celledWaves{k,1} = [celledWaves{k,1}; celledSect{1,1}];
+                    clear celledSect
+                end
+            end
+            unqName= [rootName '_p' num2str(k)];
+            waveData = celledWaves{k,1};
+            save([outputDir '\training_files\train_' num2str(k)],'waveData','-v7.3')
+            clear celledWaves{k,1}; waveData=[]; %memory reduction
         end
-        clear celledWaves{k,1}; waveData=[]; %memory reduction
+        clear waveData;
+        fprintf("%d training file(s) saved to %s\n",numSplits,[outputDir '\training_files'])
     end
-    clear waveData;
-    fprintf("%d training file(s) saved to %s\n",numSplits,[outputDir '\training_files'])
-    fprintf("%d testing  file(s) saved to %s\n",numSplits,[outputDir '\testing_files'])
     fprintf("%d total number of waves used\n",totaldats)
 end
 
